@@ -1,0 +1,18 @@
+{
+  "name": "calculator",
+  "features": {
+    "bench": {
+      "description": "Benchmarking support",
+      "dependencies": [
+        "benchmark"
+      ]
+    },
+    "test": {
+      "description": "Testing support",
+      "dependencies": [
+        "doctest",
+        "trompeloeil"
+      ]
+    }
+  }
+}

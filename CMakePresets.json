@@ -1,0 +1,49 @@
+{
+    "version": 9,
+    "include": [
+        "cmake/presets/CMake${hostSystemName}Presets.json"
+    ],
+    "configurePresets": [
+        {
+            "name": "dev",
+            "inherits": "platform",
+            "displayName": "Development (Debug)",
+            "description": "Development profile. Unoptimized debug build with full symbols and tests enabled.",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "VCPKG_MANIFEST_FEATURES": "test",
+                "CALCULATOR_ENABLE_TEST": "ON"
+            }
+        },
+        {
+            "name": "test",
+            "inherits": "platform",
+            "displayName": "Test (RelWithDebInfo)",
+            "description": "Test execution profile with moderate optimizations and debug info. Runs all unit and functional tests.",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "VCPKG_MANIFEST_FEATURES": "test",
+                "CALCULATOR_ENABLE_TEST": "ON"
+            }
+        },
+        {
+            "name": "prod",
+            "inherits": "platform",
+            "displayName": "Production (Release)",
+            "description": "Production release build with full optimizations and tests compiled out.",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "bench",
+            "inherits": "prod",
+            "displayName": "Benchmark (Release)",
+            "description": "Benchmarking profile with release optimizations and performance tests enabled.",
+            "cacheVariables": {
+                "VCPKG_MANIFEST_FEATURES": "bench",
+                "CALCULATOR_ENABLE_BENCH": "ON"
+            }
+        }
+    ]
+}
