@@ -1,85 +1,41 @@
 cmake_minimum_required(VERSION 3.30)
-project(calculator)
+project(vector)
 
 # Main library
-add_library(calculator STATIC)
-add_library(calculator::calculator ALIAS calculator)
+add_library(vector INTERFACE)
+add_library(vector::vector ALIAS vector)
 
-target_sources(calculator
-    PUBLIC
-        FILE_SET calculator_headers
+target_sources(vector
+    INTERFACE
+        FILE_SET vector_headers
         TYPE HEADERS
         BASE_DIRS include
         FILES
-            include/calculator.hpp
-    PRIVATE
-        src/calculator.cpp
+            include/vector.hpp
 )
 
-target_compile_features(calculator PUBLIC cxx_std_20)
+target_compile_features(vector INTERFACE cxx_std_23)
 
-install(
-    TARGETS calculator
-    EXPORT calculatorTargets
-    FILE_SET calculator_headers
-)
-
-install(
-    EXPORT calculatorTargets
-    DESTINATION share/cmake/calculator
-    NAMESPACE calculator::
-)
-
-install(
-    FILES cmake/calculatorConfig.cmake
-    DESTINATION share/cmake/calculator
-)
-
-option(CALCULATOR_ENABLE_TEST "Enable testing" OFF)
-if(CALCULATOR_ENABLE_TEST)
+option(VECTOR_ENABLE_TEST "Enable testing" OFF)
+if(VECTOR_ENABLE_TEST)
     find_package(doctest REQUIRED)
-    find_package(trompeloeil REQUIRED)
-
-    target_compile_definitions(calculator PRIVATE CALCULATOR_ENABLE_TEST)
-    target_link_libraries(calculator PRIVATE doctest::doctest trompeloeil::trompeloeil)
 
     include(CTest)
 
-    add_executable(calculator_tests)
+    add_executable(vector_tests)
 
-    target_sources(calculator_tests 
+    target_sources(vector_tests 
         PRIVATE
             tests/main.cpp
-            tests/calculator.test.cpp
-            $<TARGET_OBJECTS:calculator>
+            tests/vector.test.cpp
     )
 
-    target_link_libraries(calculator_tests
+    target_link_libraries(vector_tests
         PRIVATE
-            calculator
+            vector
             doctest::doctest
     )
 
     include(doctest)
-    doctest_discover_tests(calculator_tests)
-endif()
-
-
-option(CALCULATOR_ENABLE_BENCH "Enable benchmarking" OFF)
-if(CALCULATOR_ENABLE_BENCH)
-    find_package(benchmark REQUIRED)
-
-add_executable(calculator_benchmarks)
-
-target_sources(calculator_benchmarks
-    PRIVATE
-        benches/calculator.benchmark.cpp
-)
-
-target_link_libraries(calculator_benchmarks
-    PRIVATE
-        calculator
-        benchmark::benchmark
-)
-
+    doctest_discover_tests(vector_tests)
 endif()
