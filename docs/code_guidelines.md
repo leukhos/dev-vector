@@ -123,18 +123,15 @@ TEST_CASE("Calculator - division by zero throws exception")
 
 ### Test Structure (AAA Pattern)
 
-All tests use Arrange-Act-Assert with explicit comments:
+All tests use Arrange-Act-Assert:
 
 ```cpp
 TEST_CASE("Calculator - addition") {
-  // Arrange
   Calculator calc;
   int expected = 8;
 
-  // Act
   int result = calc.add(5, 3);
 
-  // Assert
   CHECK(result == expected);
 }
 ```

@@ -66,17 +66,14 @@ Full rationale in [docs/naming_conventions.md](docs/naming_conventions.md).
 
 Test naming: `TEST_CASE("vector - scenario description")`
 
-Tests follow the AAA (Arrange-Act-Assert) pattern with explicit `// Arrange`, `// Act`, `// Assert` comments. Exception testing uses `CHECK_THROWS_AS` and `CHECK_THROWS_WITH`.
+Tests follow the AAA (Arrange-Act-Assert) pattern. Exception testing uses `CHECK_THROWS_AS` and `CHECK_THROWS_WITH`.
 
 ```cpp
 TEST_CASE("vector - push_back increases size") {
-  // Arrange
   dev::vector<int> v;
 
-  // Act
   v.push_back(42);
 
-  // Assert
   CHECK(v.size() == 1);
 }
 ```
