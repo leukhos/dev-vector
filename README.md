@@ -1,111 +1,55 @@
-# C++ Project Template
+# dev::vector
 
-A modern C++ project template with CMake build system, vcpkg dependency management, DocTest testing framework, and Google Benchmark performance testing.
+A from-scratch implementation of `std::vector<T>` in C++, exploring manual memory management, exception safety, and STL internals. Inspired by Quasar Chunawala's [Overload article](https://accu.org/journals/overload/34/191/chunawala/) — the article can serve as a useful guide and reference, but this implementation does not strictly follow its code.
 
+## Goals
 
-## Features
+- Understand how `std::vector` works under the hood
+- Practice manual memory management with aligned allocation via `operator new`
+- Apply the Rule of Five (copy/move constructors and assignment operators)
+- Build exception-safe code using smart pointers and uninitialized algorithms
+- Follow a test-driven approach with DocTest
 
-- **CMake Build System**: Modern CMake (3.30+) with FILE_SET support and target-based configuration
-- **Optional vcpkg Integration**: CMake presets provide optional vcpkg dependency management with manifest mode - the project is fully independent of vcpkg
-- **Testing**: DocTest framework with embedded unit tests and separate functional tests
-- **Benchmarking**: Google Benchmark in `benches/` directory
-- **Modern C++**: C++20 standard with comprehensive compiler warnings
-- **Multi-Platform Support**: Automatic platform detection with purpose-based presets (dev, test, prod, bench)
-- **Continuous Integration**: GitHub Actions CI testing across Ubuntu, macOS, and Windows with intelligent caching
-- **Code Standards**: Documented coding guidelines and naming conventions
-- **Development Container**: Ready-to-use devcontainer configuration based on Microsoft's official containers
+## Topics Covered
+
+- **Core data structure**: raw data pointer, size, and capacity
+- **Constructors**: default, copy, move, parameterized, and `initializer_list`
+- **Memory management**: aligned allocation, custom deleters, `unique_ptr` for cleanup
+- **Key operations**: `reserve()`, `resize()`, `push_back()`, `emplace_back()`, `insert()`
+- **Exception safety**: strong guarantees using uninitialized algorithms that clean up on failure
+- **Iterator support**: begin/end iterators with range-based for loop compatibility
 
 ## Project Structure
 
 ```
-cpp-project-template/
-├── CMakeLists.txt              # Main CMake configuration (includes all targets)
-├── CMakePresets.json           # CMake presets (dev, test, prod, bench)
+dev-vector/
+├── CMakeLists.txt              # Main CMake configuration
+├── CMakePresets.json           # CMake presets (dev, test, prod)
 ├── vcpkg.json                  # vcpkg dependencies manifest
 ├── vcpkg-configuration.json    # vcpkg configuration
-├── include/                    # Public headers (FILE_SET)
-│   └── calculator.hpp            # Example header
-├── cmake/                      # CMake configuration
-│   ├── presets/                # Platform-specific preset files
-│   └── calculatorConfig.cmake  # Package configuration
-├── src/                        # Source files
-│   └── calculator.cpp          # Implementation + embedded unit tests
-├── tests/                      # Functional/Integration tests
+├── include/
+│   └── vector.hpp              # Header-only vector<T> implementation (dev namespace)
+├── tests/
 │   ├── main.cpp                # DocTest main entry point
-│   └── calculator.test.cpp     # Functional tests for public API
-├── benches/                    # Performance benchmarks
-│   └── calculator.benchmark.cpp # snake_case benchmark functions
-└── docs/                       # Documentation
+│   └── vector.test.cpp         # Unit and functional tests
+├── cmake/
+│   └── presets/                # Platform-specific preset files
+└── docs/
     ├── code_guidelines.md      # Coding standards
     └── naming_conventions.md   # Naming conventions
 ```
 
-## CMake Options
+The implementation lives entirely in `include/vector.hpp` under the `dev` namespace, as an INTERFACE library (header-only).
 
-- `CALCULATOR_ENABLE_TEST`: Enable/disable building tests (default: OFF)
-- `CALCULATOR_ENABLE_BENCH`: Enable/disable building benchmarks (default: OFF)
+## Building
 
-## Dependencies
+The project uses purpose-based CMake presets with automatic platform detection.
 
-The project has minimal runtime dependencies, managed through vcpkg manifest features:
-
-- **DocTest**: Lightweight, header-only testing framework (vcpkg `test` feature, enabled with `CALCULATOR_ENABLE_TEST=ON`)
-- **Trompeloeil**: Modern C++ mocking framework (vcpkg `test` feature, enabled with `CALCULATOR_ENABLE_TEST=ON`)
-- **Google Benchmark**: Performance benchmarking (vcpkg `bench` feature, enabled with `CALCULATOR_ENABLE_BENCH=ON`)
-
-Test dependencies are truly optional - they are only installed when the corresponding vcpkg manifest feature is enabled. Dependencies are loaded via CMake's `find_package()` function. The project includes optional vcpkg integration through CMake presets, but this is not required - you can use any dependency management approach you prefer.
-
-## Code Guidelines
-
-Coding standards are documented in the `docs/` directory:
-
-- **Naming Conventions**: See [docs/naming_conventions.md](docs/naming_conventions.md)
-- **Code Formatting**: See [docs/code_guidelines.md](docs/code_guidelines.md) for formatting and structure guidelines
-- **Header Organization**: Critical header inclusion order with mandatory grouping and comments
-- **Test Organization**:
-  - **Unit tests**: Embedded in source files (`src/*.cpp`) - test implementation details
-  - **Functional tests**: In `tests/` directory - test public API and workflows
-- **Test Standards**: AAA pattern with DocTest, `TEST_CASE("Module - scenario")` naming
-- **Benchmark Standards**: `benchmark_component_operation_scenario` snake_case naming
-
-### Naming Summary
-
-- **Classes/Structs**: `PascalCase` (Calculator, DataProcessor)
-- **Variables**: `snake_case` (counter, file_name)
-- **Members**: `m_` prefix (m_value, m_is_valid)
-- **Functions**: `snake_case` (process_data, get_name)
-- **Constants**: `SCREAMING_SNAKE_CASE` (MAX_BUFFER_SIZE)
-- **Namespaces**: `snake_case` (data_processing, networking)
-- **Error Types**: `PascalCaseError` (FileNotFoundError, ParseError)
-- **Trait interfaces**: `-able` suffix (Drawable, Serializable)
-- **Service interfaces**: `I` prefix (ILogger, ICalculator) - also for mocking
-- **Files**: `snake_case.{hpp,cpp}` (calculator.hpp, data_processor.cpp)
-
-### Code Formatting
-
-The project uses clang-format with LLVM style (2-space indentation, 80 character line length):
-
-```bash
-clang-format -i src/**/*.{cpp,h} tests/**/*.{cpp,h} benches/**/*.cpp
-```
-
-## Using CMake Presets
-
-The project uses purpose-based CMake presets with automatic platform detection. All presets use Ninja generator and vcpkg integration (when `VCPKG_ROOT` is set).
-
-**Available Presets:**
-
-| Preset | Build Type | Tests | Benchmarks | Description |
-|--------|------------|-------|------------|-------------|
-| `dev` | Debug | ON | OFF | Development with full debug symbols |
-| `test` | RelWithDebInfo | ON | OFF | Test execution with optimizations |
-| `prod` | Release | OFF | OFF | Production build, tests compiled out |
-| `bench` | Release | OFF | ON | Performance benchmarking |
-
-**Platform-Specific Compilers:**
-- **Linux**: GCC with `-Wall -Wextra -Wpedantic`
-- **macOS**: Clang with `-Wall -Wextra -Wpedantic`
-- **Windows**: MSVC with `/W4 /permissive- /EHsc`
+| Preset | Build Type      | Tests | Description                              |
+|--------|-----------------|-------|------------------------------------------|
+| `dev`  | Debug           | ON    | Development with full debug symbols      |
+| `test` | RelWithDebInfo  | ON    | Test execution with optimizations        |
+| `prod` | Release         | OFF   | Production build, tests compiled out     |
 
 ```bash
 # Development (debug + tests)
@@ -116,14 +60,33 @@ ctest --test-dir build
 # Production release
 cmake --preset prod
 cmake --build build
-
-# Benchmarking
-cmake --preset bench
-cmake --build build
-./build/benches/calculator_benchmarks
 ```
 
-See `CMakePresets.json` and `cmake/presets/` for complete configuration details.
+**Platform-Specific Compilers:**
+- **Linux**: GCC with `-Wall -Wextra -Wpedantic`
+- **macOS**: Clang with `-Wall -Wextra -Wpedantic`
+- **Windows**: MSVC with `/W4 /permissive- /EHsc`
+
+## CMake Options
+
+- `VECTOR_ENABLE_TEST`: Enable/disable building tests (default: OFF)
+
+## Dependencies
+
+- **DocTest**: Lightweight, header-only testing framework (vcpkg `test` feature, enabled with `VECTOR_ENABLE_TEST=ON`)
+
+## Code Guidelines
+
+- **Naming Conventions**: See [docs/naming_conventions.md](docs/naming_conventions.md)
+- **Code Formatting**: See [docs/code_guidelines.md](docs/code_guidelines.md)
+- **Namespace**: All code lives under `dev::`
+- **Tests**: Functional tests in `tests/`, following AAA pattern with `TEST_CASE("vector - scenario")` naming
+
+## Reference
+
+Quasar Chunawala, *"Implementing vector\<T\>"*, ACCU Overload 191 (2025) — [accu.org/journals/overload/34/191/chunawala/](https://accu.org/journals/overload/34/191/chunawala/)
+
+This project is inspired by the article and it can serve as a companion or guide while reading it, but the code here is independently written and may differ in approach, structure, and detail.
 
 ## License
 
