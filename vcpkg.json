@@ -1,6 +1,11 @@
 {
   "name": "vector",
-  "dependencies": [
-    "doctest"
-  ]
+  "features": {
+    "test": {
+      "description": "Test dependencies",
+      "dependencies": [
+        "doctest"
+      ]
+    }
+  }
 }
