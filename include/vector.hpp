@@ -4,6 +4,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 namespace dev {

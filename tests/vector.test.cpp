@@ -2,6 +2,7 @@
 
 #include <doctest/doctest.h>
 
+#include <stdexcept>
 #include <utility>
 
 // Constructors and assignments
@@ -191,7 +192,7 @@ TEST_CASE("vector - at") {
 }
 
 TEST_CASE("vector - front and back") {
-  dev::vector<int> v{1,2,3};
+  dev::vector<int> v{1, 2, 3};
 
   CHECK(v.front() == 1);
   CHECK(v.back() == 3);
