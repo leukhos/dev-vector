@@ -2,6 +2,7 @@
 
 #include <doctest/doctest.h>
 
+#include <stdexcept>
 #include <utility>
 
 // Constructors and assignments
@@ -176,3 +177,26 @@ TEST_CASE("vector - assign initializer list") {
 }
 
 // Add test with std::string
+
+// Element access
+
+TEST_CASE("vector - at") {
+  dev::vector<int> v{1, 2, 3};
+
+  SUBCASE("index is valid") { CHECK(v.at(1) == 2); }
+
+  SUBCASE("index is not valid throw an exeption") {
+    CHECK_THROWS_AS(v.at(3), std::out_of_range);
+    CHECK_THROWS_AS(v.at(-1), std::out_of_range);
+  }
+}
+
+TEST_CASE("vector - front and back") {
+  dev::vector<int> v{1, 2, 3};
+
+  CHECK(v.front() == 1);
+  CHECK(v.back() == 3);
+
+  v.front() = 4;
+  CHECK(v.front() == 4);
+}
