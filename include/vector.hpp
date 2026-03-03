@@ -105,16 +105,30 @@ public:
   }
 
   // Element access
-  reference at(size_type pos);
-  const_reference at(size_type pos) const;
+  reference at(size_type pos) {
+    if (pos < m_size) {
+      return m_data[pos];
+    } else {
+      throw std::out_of_range("pos >= size()");
+    }
+  }
+
+  const_reference at(size_type pos) const {
+    if (pos < m_size) {
+      return m_data[pos];
+    } else {
+      throw std::out_of_range("pos >= size()");
+    }
+  }
+
   reference operator[](size_type pos) { return m_data[pos]; }
   const_reference operator[](size_type pos) const { return m_data[pos]; }
-  reference front();
-  const_reference front() const;
-  reference back();
-  const_reference back() const;
-  pointer data();
-  const_pointer data() const;
+  reference front() { return m_data[0]; }
+  const_reference front() const { return m_data[0]; }
+  reference back() { return m_data[m_size - 1]; }
+  const_reference back() const { return m_data[m_size - 1]; }
+  pointer data() { return m_data; }
+  const_pointer data() const { return m_data; }
 
   // Iterators
   iterator begin() { return m_data; }
