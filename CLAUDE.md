@@ -11,20 +11,20 @@ A from-scratch implementation of `std::vector<T>` in C++23, exploring manual mem
 ```bash
 # Configure and build (dev preset: Debug + tests enabled)
 cmake --preset dev
-cmake --build build
+cmake --build --preset dev
 
 # Run all tests
-ctest --test-dir build
+ctest --preset dev
 
 # Run a single test by name
-ctest --test-dir build -R "vector - scenario name"
+ctest --test-dir build/dev -R "vector - scenario name"
 
 # Production build (tests excluded)
-cmake --preset prod
-cmake --build build
+cmake --preset release
+cmake --build --preset release
 ```
 
-The `test` preset builds with `RelWithDebInfo` and tests on. The `dev` preset uses `Debug`. Platform-specific compilers are selected automatically (GCC on Linux, Clang on macOS, MSVC on Windows).
+The `test` preset builds with `RelWithDebInfo` and tests on — used in CI. The `dev` preset uses `Debug` and is for local development. The `release` preset uses `Release` with tests compiled out. Platform-specific compilers are selected automatically (GCC on Linux, Clang on macOS, MSVC on Windows).
 
 ## Code Formatting
 

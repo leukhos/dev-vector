@@ -2,37 +2,39 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 // Constructors and assignments
 
-TEST_CASE("vector - Default ctor") {
+TEST_CASE("vector::vector()") {
   dev::vector<int> v;
 
   CHECK(v.empty());
 }
 
-TEST_CASE("vector - Parametrized ctor") {
-  SUBCASE("Parameter is positive") {
+TEST_CASE("vector::vector(size_type count, const T& value)") {
+  SUBCASE("count > 0") {
     dev::vector<int> v(10, 1);
 
     CHECK(v.size() == 10);
-    for (auto i{0uz}; i < v.size(); i++) {
-      CHECK(v[i] == 1);
-    }
+    CHECK(v.capacity() >= v.size());
+    CHECK(std::all_of(v.begin(), v.end(), [](int i) { return i == 1; }));
   }
 
-  SUBCASE("Parameter is null") {
+  SUBCASE("count == 0") {
     dev::vector<int> v(0, 1);
 
-    CHECK(v.empty());
+    THEN("the vector is empty") { CHECK(v.empty()); }
   }
 }
 
-TEST_CASE("vector - Range ctor") {
+TEST_CASE("vector::vector(InputIt first, InputIt last)") {
   int range[] = {1, 2, 3};
-  dev::vector<int> v(range, range + 3);
+
+  dev::vector<int> v(std::begin(range), std::end(range));
 
   CHECK(v.size() == 3);
   CHECK(v.capacity() >= v.size());
@@ -41,7 +43,7 @@ TEST_CASE("vector - Range ctor") {
   }
 }
 
-TEST_CASE("vector - Initializer list ctor") {
+TEST_CASE("vector::vector(std::initializer_list<T> init)") {
   dev::vector<int> v{1, 2, 3};
 
   CHECK(v.size() == 3);
@@ -51,152 +53,134 @@ TEST_CASE("vector - Initializer list ctor") {
   }
 }
 
-TEST_CASE("vector - Copy ctor") {
+TEST_CASE("vector::vector(const vector& other)") {
   dev::vector<int> v1{1, 2, 3};
 
   dev::vector<int> v2(v1);
 
-  REQUIRE(v1.size() == v2.size());
-  for (auto i{0uz}; i < v1.size(); i++) {
-    CHECK(v1[i] == i + 1);
-    CHECK(v1[i] == v2[i]);
-  }
+  CHECK(v2 == v1);
 }
 
-TEST_CASE("vector - Move ctor") {
+TEST_CASE("vector::vector(vector&& other)") {
   dev::vector<int> v1{1, 2, 3};
-  auto expected_size = v1.size();
 
   dev::vector<int> v2(std::move(v1));
 
-  CHECK(v1.size() == 0);
-  CHECK(v1.capacity() == 0);
-  CHECK(v2.size() == expected_size);
-  for (auto i{0uz}; i < v2.size(); i++) {
-    CHECK(v2[i] == i + 1);
-  }
+  CHECK(v2 == dev::vector<int>{1, 2, 3});
+  CHECK(v1.empty());
 }
 
-TEST_CASE("vector - Copy assignment") {
+TEST_CASE("vector::operator=(const vector& other)") {
   dev::vector<int> v1{1, 2, 3};
-  dev::vector<int> v2;
+  dev::vector<int> v2{4, 5, 6};
 
-  SUBCASE("Copy to other") {
+  SUBCASE("copy to other") {
     v2 = v1;
 
-    REQUIRE(v1.size() == v2.size());
-    for (auto i{0uz}; i < v1.size(); i++) {
-      CHECK(v1[i] == i + 1);
-      CHECK(v1[i] == v2[i]);
-    }
+    CHECK(v2 == v1);
+    CHECK(std::is_lvalue_reference_v<decltype(v2 = v1)>);
   }
 
-  SUBCASE("Copy to self") {
-    v1 = v1;
+  SUBCASE("copy to self") {
+    auto& rv1 = v1;
+    rv1 = v1;
 
-    CHECK(v1.size() == 3);
-    for (auto i{0uz}; i < v1.size(); i++) {
-      CHECK(v1[i] == i + 1);
-    }
+    CHECK(v1 == dev::vector{1, 2, 3});
   }
 }
 
-TEST_CASE("vector - Move assignment") {
+TEST_CASE("vector::operator=(vector&& other)") {
   dev::vector<int> v1{1, 2, 3};
-  dev::vector<int> v2;
+  dev::vector<int> v2{4, 5, 6};
 
   v2 = std::move(v1);
 
-  CHECK(v1.size() == 0);
-  CHECK(v1.capacity() == 0);
-  CHECK(v2.size() == 3);
-  for (auto i{0uz}; i < v2.size(); i++) {
-    CHECK(v2[i] == i + 1);
-  }
+  CHECK(v2 == dev::vector<int>{1, 2, 3});
+  CHECK(v1.empty());
+  CHECK(std::is_lvalue_reference_v<decltype(v2 = std::move(v1))>);
 }
 
-TEST_CASE("vector - assign count and value") {
+TEST_CASE("vector::assign(size_type count, const T& value)") {
   dev::vector<int> v(2, 1);
 
-  SUBCASE("new_capacity > m_capacity") {
+  SUBCASE("count > v.capacity()") {
     v.assign(5, 2);
 
-    CHECK(v.size() == 5);
+    CHECK(v == dev::vector<int>(5, 2));
+    CHECK(v.capacity() >= 3);
   }
 
-  SUBCASE("new_capacity <= m_capacity") {
+  SUBCASE("count <= v.capacity()") {
     v.assign(2, 2);
 
-    CHECK(v.size() == 2);
-  }
-
-  for (auto i{0uz}; i < v.size(); i++) {
-    CHECK(v[i] == 2);
+    CHECK(v == dev::vector<int>(2, 2));
   }
 }
 
-TEST_CASE("vector - assign range") {
+TEST_CASE("vector::assign(InputIt first, InputIt last)") {
   dev::vector<int> v(2, 1);
   int range[] = {1, 2, 3};
 
-  SUBCASE("new_capacity > m_capacity") {
+  SUBCASE("std::distance(first, last) > v.capacity()") {
     v.assign(range, range + 3);
 
-    CHECK(v.size() == 3);
+    CHECK(v == dev::vector<int>{1, 2, 3});
+    CHECK(v.capacity() >= 3);
   }
 
-  SUBCASE("new_capacity <= m_capacity") {
+  SUBCASE("std::distance(first, last) <= v.capacity()") {
     v.assign(range, range + 2);
 
-    CHECK(v.size() == 2);
-  }
-
-  for (auto i{0uz}; i < v.size(); i++) {
-    CHECK(v[i] == i + 1);
+    CHECK(v == dev::vector<int>{1, 2});
   }
 }
 
-TEST_CASE("vector - assign initializer list") {
+TEST_CASE("vector::assign(std::initializer_list<T> ilist)") {
   dev::vector<int> v(2, 1);
 
-  SUBCASE("new_capacity > m_capacity") {
+  SUBCASE("ilist.size() > v.capacity()") {
     v.assign({1, 2, 3});
 
-    CHECK(v.size() == 3);
+    CHECK(v == dev::vector<int>{1, 2, 3});
+    CHECK(v.capacity() >= 3);
   }
 
-  SUBCASE("new_capacity <= m_capacity") {
+  SUBCASE("ilist.size() <= v.capacity()") {
     v.assign({1, 2});
 
-    CHECK(v.size() == 2);
-  }
-
-  for (auto i{0uz}; i < v.size(); i++) {
-    CHECK(v[i] == i + 1);
+    CHECK(v == dev::vector<int>{1, 2});
   }
 }
-
-// Add test with std::string
 
 // Element access
 
-TEST_CASE("vector - at") {
+TEST_CASE("vector::at(size_type pos)") {
   dev::vector<int> v{1, 2, 3};
 
-  SUBCASE("index is valid") { CHECK(v.at(1) == 2); }
+  SUBCASE("pos < v.size()") {
+    size_t pos = 1uz;
 
-  SUBCASE("index is not valid throw an exeption") {
-    CHECK_THROWS_AS(v.at(3), std::out_of_range);
-    CHECK_THROWS_AS(v.at(-1), std::out_of_range);
+    CHECK(v.at(pos) == 2);
+    CHECK(std::is_lvalue_reference_v<decltype(v.at(pos))>);
+  }
+
+  SUBCASE("pos >= v.size()") {
+    size_t pos = 3uz;
+
+    CHECK_THROWS_AS(v.at(pos), std::out_of_range);
   }
 }
 
-TEST_CASE("vector - front and back") {
-  dev::vector<int> v{1, 2, 3};
+TEST_CASE("vector::front()") {
+  dev::vector<int> v{1, 2, 3}; // non-empty vector
 
   CHECK(v.front() == 1);
-  CHECK(v.back() == 3);
+  CHECK(std::is_lvalue_reference_v<decltype(v.front())>);
+}
 
-  v.front() = 4;
-  CHECK(v.front() == 4);
+TEST_CASE("vector::back()") {
+  dev::vector<int> v{1, 2, 3}; // non-empty vector
+
+  CHECK(v.back() == 3);
+  CHECK(std::is_lvalue_reference_v<decltype(v.back())>);
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
@@ -172,6 +173,20 @@ public:
     swap(this->m_capacity, other.m_capacity);
   }
 
+  // Non-member functions
+  friend bool operator==(const vector& lhs, const vector& rhs) {
+    return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+  }
+
+  friend auto operator<=>(const vector& lhs, const vector& rhs) {
+    return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(),
+                                                  rhs.begin(), rhs.end());
+  }
+
+  friend void swap(const vector& lhs, const vector& rhs) noexcept {
+    lhs.swap(rhs);
+  }
+
 private:
   bool is_full() const { return m_size == m_capacity; }
 
@@ -181,4 +196,5 @@ private:
   size_type m_capacity{0uz};
   constexpr static unsigned short growth_factor{2};
 };
+
 } // namespace dev

@@ -8,30 +8,73 @@
             "name": "dev",
             "inherits": "platform",
             "displayName": "Development (Debug)",
-            "description": "Development profile. Unoptimized debug build with full symbols and tests enabled.",
+            "description": "Unoptimized debug build with full symbols and tests enabled.",
+            "binaryDir": "${sourceDir}/build/dev",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "VECTOR_ENABLE_TEST": "ON"
+                "VECTOR_ENABLE_TEST": "ON",
+                "VCPKG_MANIFEST_FEATURES": "test"
             }
         },
         {
             "name": "test",
             "inherits": "platform",
             "displayName": "Test (RelWithDebInfo)",
-            "description": "Test execution profile with moderate optimizations and debug info. Runs all unit and functional tests.",
+            "description": "Optimized build with debug info and tests enabled.",
+            "binaryDir": "${sourceDir}/build/test",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "VECTOR_ENABLE_TEST": "ON"
+                "VECTOR_ENABLE_TEST": "ON",
+                "VCPKG_MANIFEST_FEATURES": "test"
             }
         },
         {
-            "name": "prod",
+            "name": "release",
             "inherits": "platform",
-            "displayName": "Production (Release)",
-            "description": "Production release build with full optimizations and tests compiled out.",
+            "displayName": "Release",
+            "description": "Fully optimized release build with tests disabled.",
+            "binaryDir": "${sourceDir}/build/release",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "dev",
+            "displayName": "Development (Debug)",
+            "description": "Build debug binaries for local development.",
+            "configurePreset": "dev"
+        },
+        {
+            "name": "test",
+            "displayName": "Test (RelWithDebInfo)",
+            "description": "Build optimized binaries for test execution.",
+            "configurePreset": "test"
+        },
+        {
+            "name": "release",
+            "displayName": "Release",
+            "description": "Build fully optimized release binaries.",
+            "configurePreset": "release"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "dev",
+            "displayName": "Development (Debug)",
+            "description": "Run tests against the debug build.",
+            "configurePreset": "dev",
+            "output": {"outputOnFailure": true},
+            "execution": {"noTestsAction": "error"}
+        },
+        {
+            "name": "test",
+            "displayName": "Test (RelWithDebInfo)",
+            "description": "Run tests against the optimized test build.",
+            "configurePreset": "test",
+            "output": {"outputOnFailure": true},
+            "execution": {"noTestsAction": "error"}
         }
     ]
 }
