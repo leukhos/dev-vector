@@ -144,7 +144,26 @@ public:
   bool empty() const { return m_size == 0uz; }
   size_type size() const { return m_size; }
   size_type capacity() const { return m_capacity; }
-  void reserve(size_type new_cap);
+
+  void reserve(size_type new_cap) {
+    if (new_cap <= m_capacity) {
+      return;
+    }
+
+    pointer new_data = m_alloc.allocate(new_cap);
+    try {
+      move_or_copy(m_data, m_size, new_data);
+    } catch (const std::exception& e) {
+      m_alloc.deallocate(new_data, new_cap);
+      throw e;
+    }
+
+    std::destroy_n(m_data, m_size);
+    m_alloc.deallocate(m_data, m_capacity);
+
+    m_data = new_data;
+    m_capacity = new_cap;
+  }
 
   // Modifiers
   void clear() {
@@ -189,6 +208,15 @@ public:
 
 private:
   bool is_full() const { return m_size == m_capacity; }
+
+  void move_or_copy(pointer source, size_t size, pointer destination) {
+    if constexpr (std::is_nothrow_move_constructible_v<T> ||
+                  !std::is_copy_constructible_v<T>) {
+      std::uninitialized_move_n(source, size, destination);
+    } else {
+      std::uninitialized_copy_n(source, size, destination);
+    }
+  }
 
   std::allocator<T> m_alloc;
   pointer m_data{nullptr};
