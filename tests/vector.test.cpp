@@ -242,3 +242,104 @@ TEST_CASE("vector::reserve(size_type new_cap)") {
     CHECK(v.capacity() == 3);
   }
 }
+
+// Modifiers
+
+TEST_CASE("vector::clear()") {
+  dev::vector<int> v{1, 2, 3};
+  auto capacity = v.capacity();
+
+  v.clear();
+
+  CHECK(v.empty());
+  CHECK(v.size() == 0);
+  CHECK(v.capacity() == capacity);
+}
+
+TEST_CASE("vector::insert(const_iterator pos, const T& value)") {
+  // An invalid pos is undefined behavior 
+  dev::vector<int> v{1, 2, 3};
+  dev::vector<int>::const_iterator pos = v.begin() + 1;
+
+  SUBCASE("size == capacity") {
+    REQUIRE(v.capacity() == 3);
+
+    v.insert(pos, 4);
+
+    CHECK(v == dev::vector<int>{1, 4, 2, 3});
+  }
+
+  SUBCASE("size < capacity") {
+    v.reserve(10);
+
+    v.insert(pos, 4);
+
+    CHECK(v == dev::vector<int>{1, 4, 2, 3});
+  }
+
+  SUBCASE("insert at the front") {
+    v.insert(v.begin(), 4);
+
+    CHECK(v == dev::vector<int>{4, 1, 2, 3});
+  }
+
+  SUBCASE("insert in the middle") {}
+
+  SUBCASE("insert at the end") {
+    v.insert(v.end(), 4);
+
+    CHECK(v == dev::vector<int>{1, 2, 3, 4});
+  }
+}
+
+TEST_CASE("vector::insert(const_iterator pos, T&& value)") {
+  dev::vector<int> v{1, 2, 3};
+  dev::vector<int>::const_iterator pos = v.begin() + 1;
+  int to_insert{4};
+
+  SUBCASE("size == capacity") {
+    REQUIRE(v.capacity() == 3);
+
+    v.insert(pos, std::move(to_insert));
+
+    CHECK(v == dev::vector<int>{1, 4, 2, 3});
+  }
+
+  SUBCASE("size < capacity") {
+    v.reserve(10);
+
+    v.insert(pos, std::move(to_insert));
+
+    CHECK(v == dev::vector<int>{1, 4, 2, 3});
+  }
+}
+
+TEST_CASE(
+    "vector::insert(const_iterator pos, size_type count, const T& value)") {
+  dev::vector<int> v{1, 2, 3};
+  dev::vector<int>::const_iterator pos = v.begin() + 1;
+
+  SUBCASE("size == capacity") {
+    REQUIRE(v.capacity() == 3);
+
+    v.insert(pos, 2, 4);
+
+    CHECK(v == dev::vector<int>{1, 4, 4, 2, 3});
+  }
+
+  SUBCASE("size + count >= capacity") {
+    v.reserve(4); // size + count = 5; capacity = 4
+
+    v.insert(pos, 2, 4);
+
+    CHECK(v == dev::vector<int>{1, 4, 4, 2, 3});
+  }
+
+  SUBCASE("size + count < capacity") {
+    v.reserve(10);
+
+    v.insert(pos, 2, 4);
+
+    CHECK(v == dev::vector<int>{1, 4, 2, 3});
+  }
+}

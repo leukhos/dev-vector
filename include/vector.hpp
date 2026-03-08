@@ -171,18 +171,26 @@ public:
     m_size = 0;
   }
 
-  iterator insert(const_iterator pos, const T& value);
-  iterator insert(const_iterator pos, T&& value);
-  iterator insert(const_iterator pos, size_type count, const T& value);
+  iterator insert(const_iterator pos, const T& value) { return m_data; }
+  iterator insert(const_iterator pos, T&& value) { return m_data; }
+  iterator insert(const_iterator pos, size_type count, const T& value) {
+    return m_data;
+  }
   template <class InputIt>
-  iterator insert(const_iterator pos, InputIt first, InputIt last);
-  iterator insert(const_iterator pos, std::initializer_list<T> ilist);
-  void push_back(const T& value);
-  void push_back(T&& value);
-  template <class... Args> reference emplace_back(Args&&... args);
-  void pop_back();
-  void resize(size_type count);
-  void resize(size_type count, const T& value);
+  iterator insert(const_iterator pos, InputIt first, InputIt last) {
+    return m_data;
+  }
+  iterator insert(const_iterator pos, std::initializer_list<T> ilist) {
+    return m_data;
+  }
+  void push_back(const T& value) {}
+  void push_back(T&& value) {}
+  template <class... Args> reference emplace_back(Args&&... args) {
+    return front();
+  }
+  void pop_back() {}
+  void resize(size_type count) {}
+  void resize(size_type count, const T& value) {}
 
   void swap(vector& other) noexcept {
     using std::swap;
