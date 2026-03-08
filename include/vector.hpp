@@ -101,6 +101,7 @@ public:
     if (ilist.size() > m_capacity) {
       vector(ilist).swap(*this);
     } else {
+      std::destroy_n(m_data, m_size);
       std::uninitialized_copy(ilist.begin(), ilist.end(), m_data);
       m_size = ilist.size();
     }
@@ -180,17 +181,46 @@ public:
   iterator insert(const_iterator pos, InputIt first, InputIt last) {
     return m_data;
   }
+
   iterator insert(const_iterator pos, std::initializer_list<T> ilist) {
-    return m_data;
+    return insert(pos, ilist.begin(), ilist.end());
   }
+
   void push_back(const T& value) {}
   void push_back(T&& value) {}
   template <class... Args> reference emplace_back(Args&&... args) {
     return front();
   }
-  void pop_back() {}
-  void resize(size_type count) {}
-  void resize(size_type count, const T& value) {}
+  void pop_back() {
+    std::destroy_at(end() - 1);
+    m_size--;
+  }
+
+  void resize(size_type count) {
+    if (count == m_size) {
+      return;
+    } else if (count < m_size) {
+      std::destroy(begin() + count, end());
+    } else {
+      reserve(count);
+      std::uninitialized_value_construct(begin() + m_size, begin() + count);
+    }
+
+    m_size = count;
+  }
+
+  void resize(size_type count, const T& value) {
+    if (count == m_size) {
+      return;
+    } else if (count < m_size) {
+      std::destroy(begin() + count, end());
+    } else {
+      reserve(count);
+      std::uninitialized_fill(begin() + m_size, begin() + count, value);
+    }
+
+    m_size = count;
+  }
 
   void swap(vector& other) noexcept {
     using std::swap;
