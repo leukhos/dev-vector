@@ -32,25 +32,31 @@ private:
 public:
   vector() {};
 
-  vector(size_type count, const T& value) : vector(init_capacity, count) {
+  vector(size_type count, const T& value)
+    requires std::copy_constructible<T>
+      : vector(init_capacity, count) {
     std::uninitialized_fill_n(m_data, count, value);
     m_size = count;
   }
 
   template <class InputIt>
-    requires std::input_iterator<InputIt>
+    requires std::input_iterator<InputIt> && std::copy_constructible<T>
   vector(InputIt first, InputIt last)
       : vector(init_capacity, std::distance(first, last)) {
     std::uninitialized_copy(first, last, m_data);
     m_size = std::distance(first, last);
   }
 
-  vector(std::initializer_list<T> init) : vector(init_capacity, init.size()) {
+  vector(std::initializer_list<T> init)
+    requires std::copy_constructible<T>
+      : vector(init_capacity, init.size()) {
     std::uninitialized_copy(init.begin(), init.end(), m_data);
     m_size = init.size();
   }
 
-  vector(const vector& other) : vector(init_capacity, other.m_capacity) {
+  vector(const vector& other)
+    requires std::copy_constructible<T>
+      : vector(init_capacity, other.m_capacity) {
     std::uninitialized_copy_n(other.m_data, other.m_size, m_data);
     m_size = other.size();
   }
@@ -65,7 +71,9 @@ public:
     m_alloc.deallocate(m_data, m_capacity);
   }
 
-  vector& operator=(const vector& other) {
+  vector& operator=(const vector& other)
+    requires std::copy_constructible<T>
+  {
     vector(other).swap(*this);
     return *this;
   }
@@ -75,7 +83,9 @@ public:
     return *this;
   }
 
-  void assign(size_type count, const T& value) {
+  void assign(size_type count, const T& value)
+    requires std::copy_constructible<T>
+  {
     if (count > m_capacity) {
       vector(count, value).swap(*this);
     } else {
@@ -86,7 +96,7 @@ public:
   }
 
   template <class InputIt>
-    requires std::input_iterator<InputIt>
+    requires std::input_iterator<InputIt> && std::copy_constructible<T>
   void assign(InputIt first, InputIt last) {
     if (static_cast<size_t>(std::distance(first, last)) > m_capacity) {
       vector(first, last).swap(*this);
@@ -97,7 +107,9 @@ public:
     }
   }
 
-  void assign(std::initializer_list<T> ilist) {
+  void assign(std::initializer_list<T> ilist)
+    requires std::copy_constructible<T>
+  {
     if (ilist.size() > m_capacity) {
       vector(ilist).swap(*this);
     } else {
@@ -172,31 +184,87 @@ public:
     m_size = 0;
   }
 
-  iterator insert(const_iterator pos, const T& value) { return m_data; }
-  iterator insert(const_iterator pos, T&& value) { return m_data; }
-  iterator insert(const_iterator pos, size_type count, const T& value) {
+  iterator insert(const_iterator pos, const T& value)
+    requires std::copy_constructible<T>
+  {
     return m_data;
   }
+
+  iterator insert(const_iterator pos, T&& value)
+    requires std::move_constructible<T>
+  {
+    return m_data;
+  }
+
+  iterator insert(const_iterator pos, size_type count, const T& value)
+    requires std::copy_constructible<T>
+  {
+    return m_data;
+  }
+
   template <class InputIt>
+    requires std::input_iterator<InputIt> && std::copy_constructible<T>
   iterator insert(const_iterator pos, InputIt first, InputIt last) {
     return m_data;
   }
 
-  iterator insert(const_iterator pos, std::initializer_list<T> ilist) {
+  iterator insert(const_iterator pos, std::initializer_list<T> ilist)
+    requires std::copy_constructible<T>
+  {
     return insert(pos, ilist.begin(), ilist.end());
   }
 
-  void push_back(const T& value) {}
-  void push_back(T&& value) {}
-  template <class... Args> reference emplace_back(Args&&... args) {
-    return front();
+  void push_back(const T& value)
+    requires std::copy_constructible<T>
+  {
+    if (m_size == m_capacity) {
+      T temp_value = value;
+      reserve(empty() ? 1uz : m_size * growth_factor);
+
+      if constexpr (std::is_nothrow_move_constructible_v<T>) {
+        std::construct_at(end(), std::move(temp_value));
+      } else {
+        std::construct_at(end(), temp_value);
+      }
+    } else {
+      std::construct_at(end(), value);
+    }
+
+    m_size++;
   }
+
+  void push_back(T&& value)
+    requires std::move_constructible<T>
+  {
+    if (m_size == m_capacity) {
+      reserve(empty() ? 1uz : m_size * growth_factor);
+    }
+
+    std::construct_at(end(), std::forward<T>(value));
+    m_size++;
+  }
+
+  template <class... Args>
+    requires std::constructible_from<T, Args...>
+  reference emplace_back(Args&&... args) {
+    if (m_size == m_capacity) {
+      reserve(empty() ? 1uz : m_size * growth_factor);
+    }
+
+    std::construct_at(end(), std::forward<Args>(args)...);
+    m_size++;
+
+    return back();
+  }
+
   void pop_back() {
     std::destroy_at(end() - 1);
     m_size--;
   }
 
-  void resize(size_type count) {
+  void resize(size_type count)
+    requires std::default_initializable<T>
+  {
     if (count == m_size) {
       return;
     } else if (count < m_size) {
@@ -209,13 +277,18 @@ public:
     m_size = count;
   }
 
-  void resize(size_type count, const T& value) {
+  void resize(size_type count, const T& value)
+    requires std::copy_constructible<T>
+  {
     if (count == m_size) {
       return;
     } else if (count < m_size) {
       std::destroy(begin() + count, end());
-    } else {
+    } else if (count > m_capacity) {
+      const T v = value; // handling self-reference
       reserve(count);
+      std::uninitialized_fill(begin() + m_size, begin() + count, v);
+    } else {
       std::uninitialized_fill(begin() + m_size, begin() + count, value);
     }
 
@@ -231,11 +304,15 @@ public:
   }
 
   // Non-member functions
-  friend bool operator==(const vector& lhs, const vector& rhs) {
+  friend bool operator==(const vector& lhs, const vector& rhs)
+    requires std::equality_comparable<T>
+  {
     return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
   }
 
-  friend auto operator<=>(const vector& lhs, const vector& rhs) {
+  friend auto operator<=>(const vector& lhs, const vector& rhs)
+    requires std::three_way_comparable<T>
+  {
     return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(),
                                                   rhs.begin(), rhs.end());
   }

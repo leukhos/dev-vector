@@ -16,16 +16,23 @@ TEST_CASE("vector::vector()") {
 }
 
 TEST_CASE("vector::vector(size_type count, const T& value)") {
-  SUBCASE("count > 0") {
-    dev::vector<int> v(10, 1);
+  int value{1};
 
-    CHECK(v.size() == 10);
+  SUBCASE("count > 0") {
+    int count{10};
+
+    dev::vector<int> v(count, value);
+
+    CHECK(v.size() == count);
     CHECK(v.capacity() >= v.size());
-    CHECK(std::all_of(v.begin(), v.end(), [](int i) { return i == 1; }));
+    CHECK(std::all_of(v.begin(), v.end(),
+                      [&value](int i) { return i == value; }));
   }
 
   SUBCASE("count == 0") {
-    dev::vector<int> v(0, 1);
+    int count{0};
+
+    dev::vector<int> v(0, value);
 
     THEN("the vector is empty") { CHECK(v.empty()); }
   }
@@ -102,18 +109,25 @@ TEST_CASE("vector::operator=(vector&& other)") {
 
 TEST_CASE("vector::assign(size_type count, const T& value)") {
   dev::vector<int> v(2, 1);
+  int value{2};
 
   SUBCASE("count > v.capacity()") {
-    v.assign(5, 2);
+    int count{5};
 
-    CHECK(v == dev::vector<int>(5, 2));
-    CHECK(v.capacity() >= 3);
+    v.assign(count, value);
+
+    CHECK(v == dev::vector<int>(count, value));
+    CHECK(v.capacity() >= count);
   }
 
   SUBCASE("count <= v.capacity()") {
-    v.assign(2, 2);
+    int count{2};
+    int capacity = v.capacity();
 
-    CHECK(v == dev::vector<int>(2, 2));
+    v.assign(count, value);
+
+    CHECK(v == dev::vector<int>(count, value));
+    CHECK(v.capacity() == capacity);
   }
 }
 
@@ -132,6 +146,7 @@ TEST_CASE("vector::assign(InputIt first, InputIt last)") {
     v.assign(range, range + 2);
 
     CHECK(v == dev::vector<int>{1, 2});
+    CHECK(v.capacity() == 2);
   }
 }
 
@@ -149,6 +164,7 @@ TEST_CASE("vector::assign(std::initializer_list<T> ilist)") {
     v.assign({1, 2});
 
     CHECK(v == dev::vector<int>{1, 2});
+    CHECK(v.capacity() == 2);
   }
 }
 
@@ -204,10 +220,11 @@ TEST_CASE("vector::reserve(size_type new_cap)") {
   SUBCASE("empty vector") {
     dev::vector<int> v;
     REQUIRE(v.empty());
+    size_t new_cap{10uz};
 
-    v.reserve(10);
+    v.reserve(new_cap);
 
-    CHECK(v.capacity() >= 10);
+    CHECK(v.capacity() >= new_cap);
     CHECK(v.empty());
   }
 
@@ -215,18 +232,23 @@ TEST_CASE("vector::reserve(size_type new_cap)") {
 
     dev::vector<int> v{1, 2, 3};
     REQUIRE(v.capacity() == 3);
+    size_t old_cap = v.capacity();
 
     SUBCASE("new_cap <= v.capacity()") {
-      v.reserve(2);
+      size_t new_cap{2uz};
 
-      CHECK(v.capacity() == 3); // do nothing
+      v.reserve(new_cap);
+
+      CHECK(v.capacity() == old_cap); // do nothing
       CHECK(v == dev::vector<int>{1, 2, 3});
     }
 
     SUBCASE("new_cap > v.capacity()") {
-      v.reserve(5);
+      size_t new_cap{5uz};
 
-      CHECK(v.capacity() >= 5);
+      v.reserve(new_cap);
+
+      CHECK(v.capacity() >= new_cap);
       CHECK(v == dev::vector<int>{1, 2, 3});
     }
   }
@@ -259,12 +281,24 @@ TEST_CASE("vector::clear()") {
 TEST_CASE("vector::insert(const_iterator pos, const T& value)") {
   // An invalid pos is undefined behavior
   dev::vector<int> v{1, 2, 3};
+  const int value{4};
+
+  SUBCASE("empty vector") {
+    dev::vector<int> empty;
+
+    auto it = empty.insert(empty.begin(), value);
+
+    CHECK(empty == dev::vector<int>{4});
+    CHECK(it == empty.begin());
+  }
 
   SUBCASE("size == capacity") {
     REQUIRE(v.capacity() == 3);
+    auto pos = v.begin();
 
     SUBCASE("external element") {
-      auto it = v.insert(v.begin(), 4);
+
+      auto it = v.insert(pos, value);
 
       CHECK(v == dev::vector<int>{4, 1, 2, 3});
       CHECK(it == v.begin());
@@ -282,21 +316,27 @@ TEST_CASE("vector::insert(const_iterator pos, const T& value)") {
     v.reserve(10);
 
     SUBCASE("insert at the front") {
-      auto it = v.insert(v.begin(), 4);
+      auto pos = v.cbegin();
+
+      auto it = v.insert(pos, value);
 
       CHECK(v == dev::vector<int>{4, 1, 2, 3});
       CHECK(it == v.begin());
     }
 
     SUBCASE("insert in the middle") {
-      auto it = v.insert(v.begin() + 1, 4);
+      auto pos = v.cbegin() + 1;
+
+      auto it = v.insert(pos, value);
 
       CHECK(v == dev::vector<int>{1, 4, 2, 3});
-      CHECK(it == v.begin() + 1);
+      CHECK(it == pos);
     }
 
     SUBCASE("insert at the end") {
-      auto it = v.insert(v.end(), 4);
+      auto pos = v.cend();
+
+      auto it = v.insert(pos, value);
 
       CHECK(v == dev::vector<int>{1, 2, 3, 4});
       CHECK(it == v.begin() + 3);
@@ -307,45 +347,46 @@ TEST_CASE("vector::insert(const_iterator pos, const T& value)") {
 TEST_CASE("vector::insert(const_iterator pos, T&& value)") {
   // An invalid pos is undefined behavior
   dev::vector<int> v{1, 2, 3};
-  int to_insert{4};
+  int value{4};
+
+  SUBCASE("empty vector") {
+    dev::vector<int> empty;
+    int empty_value{4};
+
+    auto it = empty.insert(empty.begin(), std::move(empty_value));
+
+    CHECK(empty == dev::vector<int>{4});
+    CHECK(it == empty.begin());
+  }
 
   SUBCASE("size == capacity") {
     REQUIRE(v.capacity() == 3);
 
-    SUBCASE("external element") {
-      auto it = v.insert(v.begin(), std::move(to_insert));
+    auto it = v.insert(v.begin(), std::move(value));
 
-      CHECK(v == dev::vector<int>{4, 1, 2, 3});
-      CHECK(it == v.begin());
-    }
-
-    SUBCASE("self-reference element") {
-      auto it = v.insert(v.begin(), std::move(v[2]));
-
-      CHECK(v == dev::vector<int>{3, 1, 2, 3});
-      CHECK(it == v.begin());
-    }
+    CHECK(v == dev::vector<int>{4, 1, 2, 3});
+    CHECK(it == v.begin());
   }
 
   SUBCASE("size < capacity") {
     v.reserve(10);
 
     SUBCASE("insert at the front") {
-      auto it = v.insert(v.begin(), std::move(to_insert));
+      auto it = v.insert(v.begin(), std::move(value));
 
       CHECK(v == dev::vector<int>{4, 1, 2, 3});
       CHECK(it == v.begin());
     }
 
     SUBCASE("insert in the middle") {
-      auto it = v.insert(v.begin() + 1, std::move(to_insert));
+      auto it = v.insert(v.begin() + 1, std::move(value));
 
       CHECK(v == dev::vector<int>{1, 4, 2, 3});
       CHECK(it == v.begin() + 1);
     }
 
     SUBCASE("insert at the end") {
-      auto it = v.insert(v.end(), std::move(to_insert));
+      auto it = v.insert(v.end(), std::move(value));
 
       CHECK(v == dev::vector<int>{1, 2, 3, 4});
       CHECK(it == v.begin() + 3);
@@ -356,19 +397,30 @@ TEST_CASE("vector::insert(const_iterator pos, T&& value)") {
 TEST_CASE(
     "vector::insert(const_iterator pos, size_type count, const T& value)") {
   dev::vector<int> v{1, 2, 3};
+  size_t count{2uz};
+  const int value{4};
+
+  SUBCASE("empty vector") {
+    dev::vector<int> empty;
+
+    auto it = empty.insert(empty.begin(), count, value);
+
+    CHECK(empty == dev::vector<int>{4, 4});
+    CHECK(it == empty.begin());
+  }
 
   SUBCASE("size + count >= capacity") {
     v.reserve(4); // size + count = 5; capacity = 4
 
     SUBCASE("external element") {
-      auto it = v.insert(v.begin(), 2, 4);
+      auto it = v.insert(v.begin(), count, value);
 
       CHECK(v == dev::vector<int>{4, 4, 1, 2, 3});
       CHECK(it == v.begin());
     }
 
     SUBCASE("self-reference element") {
-      auto it = v.insert(v.begin(), 2, v[0]);
+      auto it = v.insert(v.begin(), count, v[0]);
 
       CHECK(v == dev::vector<int>{1, 1, 1, 2, 3});
       CHECK(it == v.begin());
@@ -379,21 +431,21 @@ TEST_CASE(
     v.reserve(10);
 
     SUBCASE("insert at the front") {
-      auto it = v.insert(v.begin(), 2, 4);
+      auto it = v.insert(v.begin(), count, value);
 
       CHECK(v == dev::vector<int>{4, 4, 1, 2, 3});
       CHECK(it == v.begin());
     }
 
     SUBCASE("insert in the middle") {
-      auto it = v.insert(v.begin() + 1, 2, 4);
+      auto it = v.insert(v.begin() + 1, count, value);
 
       CHECK(v == dev::vector<int>{1, 4, 4, 2, 3});
       CHECK(it == v.begin() + 1);
     }
 
     SUBCASE("insert at the end") {
-      auto it = v.insert(v.end(), 2, 4);
+      auto it = v.insert(v.end(), count, value);
 
       CHECK(v == dev::vector<int>{1, 2, 3, 4, 4});
       CHECK(it == v.begin() + 3);
@@ -404,6 +456,15 @@ TEST_CASE(
 TEST_CASE("vector::insert(const_iterator pos, InputIt first, InputIt last)") {
   dev::vector<int> v{1, 2, 3};
   int range[] = {4, 5};
+
+  SUBCASE("empty vector") {
+    dev::vector<int> empty;
+
+    auto it = empty.insert(empty.begin(), range, range + 2);
+
+    CHECK(empty == dev::vector<int>{4, 5});
+    CHECK(it == empty.begin());
+  }
 
   SUBCASE("size + (last - first)  >= capacity") {
     REQUIRE(v.capacity() == 3);
@@ -460,6 +521,15 @@ TEST_CASE(
     "vector::insert(const_iterator pos, std::initializer_list<T> ilist)") {
   dev::vector<int> v{1, 2, 3};
 
+  SUBCASE("empty vector") {
+    dev::vector<int> empty;
+
+    auto it = empty.insert(empty.begin(), {4, 5});
+
+    CHECK(empty == dev::vector<int>{4, 5});
+    CHECK(it == empty.begin());
+  }
+
   SUBCASE("size + ilist.size() >= capacity") {
     REQUIRE(v.capacity() == 3);
 
@@ -505,12 +575,23 @@ TEST_CASE(
 
 TEST_CASE("vector::push_back(const T& value)") {
   dev::vector<int> v{1, 2, 3};
+  const int value{4};
+
+  SUBCASE("empty vector") {
+    dev::vector<int> empty;
+
+    empty.push_back(value);
+
+    CHECK(empty == dev::vector<int>{4});
+    CHECK(empty.size() == 1);
+    CHECK(empty.capacity() >= 1);
+  }
 
   SUBCASE("size == capacity") {
     REQUIRE(v.capacity() == 3);
 
     SUBCASE("external element") {
-      v.push_back(4);
+      v.push_back(value);
 
       CHECK(v == dev::vector<int>{1, 2, 3, 4});
       CHECK(v.size() == 4);
@@ -522,13 +603,14 @@ TEST_CASE("vector::push_back(const T& value)") {
 
       CHECK(v == dev::vector<int>{1, 2, 3, 1});
       CHECK(v.size() == 4);
+      CHECK(v.capacity() >= 4);
     }
   }
 
   SUBCASE("size < capacity") {
     v.reserve(10);
 
-    v.push_back(4);
+    v.push_back(value);
 
     CHECK(v == dev::vector<int>{1, 2, 3, 4});
     CHECK(v.size() == 4);
@@ -538,36 +620,76 @@ TEST_CASE("vector::push_back(const T& value)") {
 
 TEST_CASE("vector::push_back(T&& value)") {
   dev::vector<int> v{1, 2, 3};
+  int value{4};
+
+  SUBCASE("empty vector") {
+    dev::vector<int> empty;
+
+    empty.push_back(std::move(value));
+
+    CHECK(empty == dev::vector<int>{4});
+    CHECK(empty.size() == 1);
+    CHECK(empty.capacity() >= 1);
+  }
 
   SUBCASE("size == capacity") {
     REQUIRE(v.capacity() == 3);
 
-    SUBCASE("external element") {
-      int value{4};
-      v.push_back(std::move(value));
+    v.push_back(std::move(value));
 
-      CHECK(v == dev::vector<int>{1, 2, 3, 4});
-      CHECK(v.size() == 4);
-      CHECK(v.capacity() >= 4);
-    }
-
-    SUBCASE("self-reference element") {
-      v.push_back(std::move(v[0]));
-
-      CHECK(v == dev::vector<int>{1, 2, 3, 1});
-      CHECK(v.size() == 4);
-    }
+    CHECK(v == dev::vector<int>{1, 2, 3, 4});
+    CHECK(v.size() == 4);
+    CHECK(v.capacity() >= 4);
   }
 
   SUBCASE("size < capacity") {
     v.reserve(10);
-    int value{4};
 
     v.push_back(std::move(value));
 
     CHECK(v == dev::vector<int>{1, 2, 3, 4});
     CHECK(v.size() == 4);
     CHECK(v.capacity() == 10);
+  }
+}
+
+TEST_CASE("vector::emplace_back(Args&&... args)") {
+  dev::vector<int> v{1, 2, 3};
+
+  SUBCASE("empty vector") {
+    dev::vector<int> empty;
+
+    auto &ref = empty.emplace_back(4);
+
+    CHECK(empty == dev::vector<int>{4});
+    CHECK(empty.size() == 1);
+    CHECK(empty.capacity() >= 1);
+    CHECK(ref == 4);
+    CHECK(&ref == &empty.back());
+  }
+
+  SUBCASE("size == capacity") {
+    REQUIRE(v.capacity() == 3);
+
+    auto &ref = v.emplace_back(4);
+
+    CHECK(v == dev::vector<int>{1, 2, 3, 4});
+    CHECK(v.size() == 4);
+    CHECK(v.capacity() >= 4);
+    CHECK(ref == 4);
+    CHECK(&ref == &v.back());
+  }
+
+  SUBCASE("size < capacity") {
+    v.reserve(10);
+
+    auto &ref = v.emplace_back(4);
+
+    CHECK(v == dev::vector<int>{1, 2, 3, 4});
+    CHECK(v.size() == 4);
+    CHECK(v.capacity() == 10);
+    CHECK(ref == 4);
+    CHECK(&ref == &v.back());
   }
 }
 
@@ -621,9 +743,10 @@ TEST_CASE("vector::resize(size_type count)") {
 
 TEST_CASE("vector::resize(size_type count, const T& value)") {
   dev::vector<int> v{1, 2, 3};
+  const int value{9};
 
   SUBCASE("count == size") {
-    v.resize(3, 9);
+    v.resize(3, value);
 
     CHECK(v == dev::vector<int>{1, 2, 3});
   }
@@ -631,7 +754,7 @@ TEST_CASE("vector::resize(size_type count, const T& value)") {
   SUBCASE("count < size") {
     auto capacity = v.capacity();
 
-    v.resize(1, 9);
+    v.resize(1, value);
 
     CHECK(v == dev::vector<int>{1});
     CHECK(v.capacity() == capacity);
@@ -641,7 +764,7 @@ TEST_CASE("vector::resize(size_type count, const T& value)") {
     SUBCASE("count <= capacity") {
       v.reserve(10);
 
-      v.resize(5, 9);
+      v.resize(5, value);
 
       CHECK(v == dev::vector<int>{1, 2, 3, 9, 9});
       CHECK(v.capacity() == 10);
@@ -650,10 +773,19 @@ TEST_CASE("vector::resize(size_type count, const T& value)") {
     SUBCASE("count > capacity") {
       REQUIRE(v.capacity() == 3);
 
-      v.resize(5, 9);
+      SUBCASE("external element") {
+        v.resize(5, value);
 
-      CHECK(v == dev::vector<int>{1, 2, 3, 9, 9});
-      CHECK(v.capacity() >= 5);
+        CHECK(v == dev::vector<int>{1, 2, 3, 9, 9});
+        CHECK(v.capacity() >= 5);
+      }
+
+      SUBCASE("self-reference element") {
+        v.resize(5, v[0]);
+
+        CHECK(v == dev::vector<int>{1, 2, 3, 1, 1});
+        CHECK(v.capacity() >= 5);
+      }
     }
   }
 }
