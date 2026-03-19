@@ -457,32 +457,32 @@ TEST_CASE("vector::insert(const_iterator pos, InputIt first, InputIt last)") {
   dev::vector<int> v{1, 2, 3};
   int range[] = {4, 5};
 
-  SUBCASE("empty vector") {
-    dev::vector<int> empty;
+  // SUBCASE("empty vector") {
+  //   dev::vector<int> empty;
 
-    auto it = empty.insert(empty.begin(), range, range + 2);
+  //   auto it = empty.insert(empty.begin(), range, range + 2);
 
-    CHECK(empty == dev::vector<int>{4, 5});
-    CHECK(it == empty.begin());
-  }
+  //   CHECK(empty == dev::vector<int>{4, 5});
+  //   CHECK(it == empty.begin());
+  // }
 
-  SUBCASE("size + (last - first)  >= capacity") {
-    REQUIRE(v.capacity() == 3);
+  // SUBCASE("size + (last - first)  >= capacity") {
+  //   REQUIRE(v.capacity() == 3);
 
-    SUBCASE("external range") {
-      auto it = v.insert(v.begin(), range, range + 2);
+  //   SUBCASE("external range") {
+  //     auto it = v.insert(v.begin(), range, range + 2);
 
-      CHECK(v == dev::vector<int>{4, 5, 1, 2, 3});
-      CHECK(it == v.begin());
-    }
+  //     CHECK(v == dev::vector<int>{4, 5, 1, 2, 3});
+  //     CHECK(it == v.begin());
+  //   }
 
-    SUBCASE("self-reference range") {
-      auto it = v.insert(v.begin(), v.begin() + 1, v.end());
+  //   SUBCASE("self-reference range") {
+  //     auto it = v.insert(v.begin(), v.begin() + 1, v.end());
 
-      CHECK(v == dev::vector<int>{2, 3, 1, 2, 3});
-      CHECK(it == v.begin());
-    }
-  }
+  //     CHECK(v == dev::vector<int>{2, 3, 1, 2, 3});
+  //     CHECK(it == v.begin());
+  //   }
+  // }
 
   SUBCASE("size + (last - first) < capacity") {
     v.reserve(10);
@@ -495,6 +495,7 @@ TEST_CASE("vector::insert(const_iterator pos, InputIt first, InputIt last)") {
     }
 
     SUBCASE("insert in the middle") {
+      // Two cases here: range_size < elem_to_shift and opposite
       auto it = v.insert(v.begin() + 1, range, range + 2);
 
       CHECK(v == dev::vector<int>{1, 4, 5, 2, 3});

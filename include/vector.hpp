@@ -165,7 +165,7 @@ public:
 
     pointer new_data = m_alloc.allocate(new_cap);
     try {
-      move_or_copy(m_data, m_size, new_data);
+      uninitialized_move_or_copy(begin(), end(), new_data);
     } catch (const std::exception& e) {
       m_alloc.deallocate(new_data, new_cap);
       throw e;
@@ -205,7 +205,25 @@ public:
   template <class InputIt>
     requires std::input_iterator<InputIt> && std::copy_constructible<T>
   iterator insert(const_iterator pos, InputIt first, InputIt last) {
-    return m_data;
+
+    auto p = const_cast<iterator>(pos);
+    size_t range_size = std::distance(first, last);
+    size_t num_elements_to_shift = std::distance(p, end());
+
+    if (range_size < num_elements_to_shift) {
+      uninitialized_move_or_copy(cend() - range_size, cend(), end());
+      // move_or_copy_backward(pos, end() - range_size, end());
+      std::move_backward(pos, cend() - range_size, end());
+      std::copy(first, last, const_cast<iterator>(pos));
+    } else {
+      uninitialized_move_or_copy(pos, cend(),
+                                 end() + range_size - num_elements_to_shift);
+      std::copy(first, first + num_elements_to_shift, const_cast<iterator>(pos));
+      std::uninitialized_copy(first + num_elements_to_shift, last, end());
+    }
+
+    m_size += range_size;
+    return p;
   }
 
   iterator insert(const_iterator pos, std::initializer_list<T> ilist)
@@ -218,13 +236,21 @@ public:
     requires std::copy_constructible<T>
   {
     if (m_size == m_capacity) {
-      T temp_value = value;
+      const_pointer p_value = &value;
+      T temp;
+
+      // handle self-reference
+      if (p_value >= begin() && p_value < end()) {
+        temp = value;
+        p_value = &temp;
+      }
+
       reserve(empty() ? 1uz : m_size * growth_factor);
 
       if constexpr (std::is_nothrow_move_constructible_v<T>) {
-        std::construct_at(end(), std::move(temp_value));
+        std::construct_at(end(), std::move(*p_value));
       } else {
-        std::construct_at(end(), temp_value);
+        std::construct_at(end(), *p_value);
       }
     } else {
       std::construct_at(end(), value);
@@ -285,9 +311,16 @@ public:
     } else if (count < m_size) {
       std::destroy(begin() + count, end());
     } else if (count > m_capacity) {
-      const T v = value; // handling self-reference
+      const_pointer p_value = &value;
+      T temp;
+      // handling self-reference
+      if (p_value >= begin() && p_value < end()) {
+        temp = value;
+        p_value = &temp;
+      }
+
       reserve(count);
-      std::uninitialized_fill(begin() + m_size, begin() + count, v);
+      std::uninitialized_fill(begin() + m_size, begin() + count, *p_value);
     } else {
       std::uninitialized_fill(begin() + m_size, begin() + count, value);
     }
@@ -324,12 +357,25 @@ public:
 private:
   bool is_full() const { return m_size == m_capacity; }
 
-  void move_or_copy(pointer source, size_t size, pointer destination) {
+  template <class InputIt, class NoThrowForwardIt>
+    requires std::input_iterator<InputIt> &&
+             std::forward_iterator<NoThrowForwardIt>
+  void uninitialized_move_or_copy(InputIt first, InputIt last,
+                                  NoThrowForwardIt result) {
     if constexpr (std::is_nothrow_move_constructible_v<T> ||
                   !std::is_copy_constructible_v<T>) {
-      std::uninitialized_move_n(source, size, destination);
+      std::uninitialized_move(first, last, result);
     } else {
-      std::uninitialized_copy_n(source, size, destination);
+      std::uninitialized_copy(first, last, result);
+    }
+  }
+
+  void move_or_copy_backward(iterator first, iterator last, iterator result) {
+    if constexpr (std::is_nothrow_move_constructible_v<T> ||
+                  !std::is_copy_constructible_v<T>) {
+      std::move_backward(first, last, result);
+    } else {
+      std::copy_backward(first, last, result);
     }
   }
 
