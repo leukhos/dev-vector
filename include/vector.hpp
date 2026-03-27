@@ -166,9 +166,9 @@ public:
     pointer new_data = m_alloc.allocate(new_cap);
     try {
       uninitialized_move_or_copy(begin(), end(), new_data);
-    } catch (const std::exception& e) {
+    } catch (...) {
       m_alloc.deallocate(new_data, new_cap);
-      throw e;
+      throw;
     }
 
     std::destroy_n(m_data, m_size);
@@ -187,55 +187,27 @@ public:
   iterator insert(const_iterator pos, const T& value)
     requires std::copy_constructible<T>
   {
-    return m_data;
+    if (&value >= begin() && &value < end()) {
+      T temp = value;
+      return emplace(pos, std::move(temp));
+    } else {
+      return emplace(pos, value);
+    }
   }
 
   iterator insert(const_iterator pos, T&& value)
     requires std::move_constructible<T>
   {
-    return m_data;
+    return emplace(pos, std::forward<T>(value));
   }
 
   iterator insert(const_iterator pos, size_type count, const T& value)
     requires std::copy_constructible<T>
   {
-    return m_data;
-  }
+    auto pos_ = const_cast<iterator>(pos);
+    size_t num_elements_to_shift = std::distance(pos_, end());
 
-  template <class InputIt>
-    requires std::input_iterator<InputIt> && std::copy_constructible<T>
-  iterator insert(const_iterator pos, InputIt first, InputIt last) {
-
-    auto p = const_cast<iterator>(pos);
-    size_t range_size = std::distance(first, last);
-    size_t num_elements_to_shift = std::distance(p, end());
-
-    if (range_size < num_elements_to_shift) {
-      uninitialized_move_or_copy(cend() - range_size, cend(), end());
-      // move_or_copy_backward(pos, end() - range_size, end());
-      std::move_backward(pos, cend() - range_size, end());
-      std::copy(first, last, const_cast<iterator>(pos));
-    } else {
-      uninitialized_move_or_copy(pos, cend(),
-                                 end() + range_size - num_elements_to_shift);
-      std::copy(first, first + num_elements_to_shift, const_cast<iterator>(pos));
-      std::uninitialized_copy(first + num_elements_to_shift, last, end());
-    }
-
-    m_size += range_size;
-    return p;
-  }
-
-  iterator insert(const_iterator pos, std::initializer_list<T> ilist)
-    requires std::copy_constructible<T>
-  {
-    return insert(pos, ilist.begin(), ilist.end());
-  }
-
-  void push_back(const T& value)
-    requires std::copy_constructible<T>
-  {
-    if (m_size == m_capacity) {
+    if (m_size + count > m_capacity) {
       const_pointer p_value = &value;
       T temp;
 
@@ -245,29 +217,144 @@ public:
         p_value = &temp;
       }
 
-      reserve(empty() ? 1uz : m_size * growth_factor);
+      size_t new_cap = std::max(m_size * growth_factor, m_size + count);
+      pointer new_data = m_alloc.allocate(new_cap);
+      iterator new_pos = new_data + m_size - num_elements_to_shift;
 
-      if constexpr (std::is_nothrow_move_constructible_v<T>) {
-        std::construct_at(end(), std::move(*p_value));
-      } else {
-        std::construct_at(end(), *p_value);
+      try {
+        uninitialized_move_or_copy(begin(), pos_, new_data);
+        std::uninitialized_fill_n(new_pos, count, *p_value);
+        uninitialized_move_or_copy(pos_, end(), new_pos + count);
+      } catch (...) {
+        m_alloc.deallocate(new_data, new_cap);
+        throw;
       }
+
+      std::destroy_n(m_data, m_size);
+      m_alloc.deallocate(m_data, m_capacity);
+
+      pos_ = new_pos;
+      m_data = new_data;
+      m_capacity = new_cap;
+    } else if (count < num_elements_to_shift) {
+      uninitialized_move_or_copy(end() - count, end(), end());
+      move_or_copy_backward(pos_, end() - count, end());
+      std::fill_n(pos_, count, value);
     } else {
-      std::construct_at(end(), value);
+      uninitialized_move_or_copy(pos_, end(),
+                                 end() + count - num_elements_to_shift);
+      std::fill_n(pos_, num_elements_to_shift, value);
+      std::uninitialized_fill_n(end(), count - num_elements_to_shift, value);
+    }
+
+    m_size += count;
+    return pos_;
+  }
+
+  template <class InputIt>
+    requires std::input_iterator<InputIt> && std::copy_constructible<T>
+  iterator insert(const_iterator pos, InputIt first, InputIt last) {
+
+    auto pos_ = const_cast<iterator>(pos);
+    size_t range_size = std::distance(first, last);
+    size_t num_elements_to_shift = std::distance(pos_, end());
+
+    if (m_size + range_size > m_capacity) {
+      size_t new_cap = std::max(m_size * growth_factor, m_size + range_size);
+      pointer new_data = m_alloc.allocate(new_cap);
+      iterator new_pos = std::next(new_data, m_size - num_elements_to_shift);
+
+      try {
+        uninitialized_move_or_copy(begin(), pos_, new_data);
+        std::uninitialized_copy(first, last, new_pos);
+        uninitialized_move_or_copy(pos_, end(), std::next(new_pos, range_size));
+      } catch (...) {
+        m_alloc.deallocate(new_data, new_cap);
+        throw;
+      }
+
+      std::destroy_n(m_data, m_size);
+      m_alloc.deallocate(m_data, m_capacity);
+
+      pos_ = new_pos;
+      m_data = new_data;
+      m_capacity = new_cap;
+    } else if (range_size < num_elements_to_shift) {
+      auto it = std::next(begin(), m_size - range_size);
+      uninitialized_move_or_copy(it, end(), end());
+      move_or_copy_backward(pos_, it, end());
+      std::copy(first, last, pos_);
+    } else {
+      auto it = std::next(end(), range_size - num_elements_to_shift);
+      auto it_range = std::next(first, num_elements_to_shift);
+      uninitialized_move_or_copy(pos_, end(), it);
+      std::copy(first, it_range, pos_);
+      std::uninitialized_copy(it_range, last, end());
+    }
+
+    m_size += range_size;
+    return pos_;
+  }
+
+  iterator insert(const_iterator pos, std::initializer_list<T> ilist)
+    requires std::copy_constructible<T>
+  {
+    return insert(pos, ilist.begin(), ilist.end());
+  }
+
+  template <class... Args>
+    requires std::constructible_from<T, Args...>
+  iterator emplace(const_iterator pos, Args&&... args) {
+    auto pos_ = const_cast<iterator>(pos);
+    size_t num_elements_to_shift = std::distance(pos_, end());
+
+    if (m_size == m_capacity) {
+      size_t new_cap = empty() ? 1uz : m_size * growth_factor;
+      pointer new_data = m_alloc.allocate(new_cap);
+      iterator new_pos = new_data + m_size - num_elements_to_shift;
+
+      try {
+        uninitialized_move_or_copy(begin(), pos_, new_data);
+        std::construct_at(new_pos, std::forward<Args>(args)...);
+        uninitialized_move_or_copy(pos_, end(), new_pos + 1);
+      } catch (...) {
+        m_alloc.deallocate(new_data, new_cap);
+        throw;
+      }
+
+      std::destroy_n(m_data, m_size);
+      m_alloc.deallocate(m_data, m_capacity);
+
+      pos_ = new_pos;
+      m_data = new_data;
+      m_capacity = new_cap;
+    } else if (num_elements_to_shift > 0) {
+      uninitialized_move_or_copy(end() - 1, end(), end());
+      move_or_copy_backward(pos_, end() - 1, end());
+      *pos_ = T{std::forward<Args>(args)...};
+    } else {
+      std::construct_at(pos_, std::forward<Args>(args)...);
     }
 
     m_size++;
+    return pos_;
+  }
+
+  void push_back(const T& value)
+    requires std::copy_constructible<T>
+  {
+    if (m_size == m_capacity && &value >= begin() && &value < end()) {
+      T temp = value;
+      emplace_back(std::move(temp));
+    } else {
+      emplace_back(value);
+    }
   }
 
   void push_back(T&& value)
     requires std::move_constructible<T>
   {
-    if (m_size == m_capacity) {
-      reserve(empty() ? 1uz : m_size * growth_factor);
-    }
-
-    std::construct_at(end(), std::forward<T>(value));
-    m_size++;
+    emplace_back(std::forward<T>(value));
   }
 
   template <class... Args>
@@ -350,13 +437,9 @@ public:
                                                   rhs.begin(), rhs.end());
   }
 
-  friend void swap(const vector& lhs, const vector& rhs) noexcept {
-    lhs.swap(rhs);
-  }
+  friend void swap(vector& lhs, vector& rhs) noexcept { lhs.swap(rhs); }
 
 private:
-  bool is_full() const { return m_size == m_capacity; }
-
   template <class InputIt, class NoThrowForwardIt>
     requires std::input_iterator<InputIt> &&
              std::forward_iterator<NoThrowForwardIt>
@@ -376,6 +459,15 @@ private:
       std::move_backward(first, last, result);
     } else {
       std::copy_backward(first, last, result);
+    }
+  }
+
+  void move_or_copy(iterator first, iterator last, iterator result) {
+    if constexpr (std::is_nothrow_move_constructible_v<T> ||
+                  !std::is_copy_constructible_v<T>) {
+      std::move(first, last, result);
+    } else {
+      std::copy(first, last, result);
     }
   }
 

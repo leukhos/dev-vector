@@ -32,7 +32,7 @@ TEST_CASE("vector::vector(size_type count, const T& value)") {
   SUBCASE("count == 0") {
     int count{0};
 
-    dev::vector<int> v(0, value);
+    dev::vector<int> v(count, value);
 
     THEN("the vector is empty") { CHECK(v.empty()); }
   }
