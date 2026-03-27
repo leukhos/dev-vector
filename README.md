@@ -1,12 +1,5 @@
 # dev::vector
 
-## TODO
-
-- [ ] Fix `insert()` iterator constraint: currently uses `move_backward` which requires `BidirectionalIterator`, but the standard only requires `InputIterator` — needs a different shifting strategy
-- [ ] Add tests for `emplace()`
-- [ ] Review all function requirements against the standard: audit for missing preconditions/postconditions and verify they are respected
-- [ ] Replace `std::allocator` with a custom allocator implementation
-
 A from-scratch implementation of `std::vector<T>` in C++, exploring manual memory management, exception safety, and STL internals. Inspired by Quasar Chunawala's [Overload article](https://accu.org/journals/overload/34/191/chunawala/) — the article can serve as a useful guide and reference, but this implementation does not strictly follow its code.
 
 ## Goals
@@ -16,6 +9,13 @@ A from-scratch implementation of `std::vector<T>` in C++, exploring manual memor
 - Apply the Rule of Five (copy/move constructors and assignment operators)
 - Build exception-safe code using smart pointers and uninitialized algorithms
 - Follow a test-driven approach with DocTest
+
+## TODO
+
+- [ ] Fix `insert()` iterator constraint: currently uses `move_backward` which requires `BidirectionalIterator`, but the standard only requires `InputIterator` — needs a different shifting strategy
+- [ ] Add tests for `emplace()`
+- [ ] Review all function requirements against the standard: audit for missing preconditions/postconditions and verify they are respected
+- [ ] Replace `std::allocator` with a custom allocator implementation
 
 ## Topics Covered
 
